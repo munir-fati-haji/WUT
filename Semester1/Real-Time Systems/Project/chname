@@ -1,0 +1,177 @@
+#!/bin/bash
+
+name=`basename $0`
+
+uppercase(){
+old="$(dirname $1 )/$(basename $1)"
+new="$(dirname $1 )/$(basename $1 | tr '[a-z]' '[A-Z]')"
+if ! [[ $(basename $1) =~ [a-zA-Z] ]] ;then
+    echo "$name: $2 '$(basename $1)' in '$(dirname $1 )/' does not contain any characters"
+elif test "$old" == "$new";then
+    echo "$name: $2 '$(basename $1)' in '$(dirname $1 )/' is already in UPPERCASE"
+elif [ -f "$(dirname $1 )/$(basename $1 | tr '[a-z]' '[A-Z]')" ] || [ -d "$(dirname $1 )/$(basename $1 | tr '[a-z]' '[A-Z]')" ]; then
+    echo "$name: Another file or directory in '$(dirname $1 )/' with the name '$(basename $1 | tr '[a-z]' '[A-Z]')' exists"
+else
+    if test "$verbose" = "y";then
+        echo "$2 '$(basename $1)' in '$(dirname $1 )/' renamed to '$(basename $1 | tr '[a-z]' '[A-Z]')'" 
+    fi
+    mv -T "$old" "$new"
+fi
+}
+
+lowercase(){
+old="$(dirname $1 )/$(basename $1)"
+new="$(dirname $1 )/$(basename $1 | tr '[A-Z]' '[a-z]')"
+if ! [[ $(basename $1) =~ [a-zA-Z] ]] ;then
+    echo "$name: $2 '$(basename $1)' in '$(dirname $1 )/' does not contain any characters"
+elif test "$old" == "$new";then
+    echo "$name: $2 '$(basename $1)' in '$(dirname $1 )/' is already in lowercase"
+elif [ -f "$(dirname $1 )/$(basename $1 | tr '[A-Z]' '[a-z]')" ] || [ -d "$(dirname $1 )/$(basename $1 | tr '[A-Z]' '[a-z]')" ]; then
+    echo "$name: Another file or directory in '$(dirname $1 )/' with the name '$(basename $1 | tr '[A-Z]' '[a-z]')' exists"
+else
+    if test "$verbose" = "y";then
+        echo "$2 '$(basename $1)' in '$(dirname $1 )/' renamed to '$(basename $1 | tr '[A-Z]' '[a-z]')'" 
+    fi
+    mv -T "$old" "$new"
+fi
+}
+
+error_msg(){ 
+	echo "$name: error: $1" 1>&2 
+}
+
+help() 
+{ 
+cat<<EOT 1>&2
+Usage: $name [OPTION]... FILE...
+Rename the name of the directory or a file to uppercase or lowercase. Either with recursion or without recursion.
+
+Mandatory arguments to be passed.
+  -l, --lowercase         change file or directory to lowercase
+  -u, --uppercase         change file or directory to uppercase
+                          and at least one file or directory
+If you specify more than one of -l, -u, only the final one takes effect.
+  
+For recurrsion either to sub directories or to files in the sub directories  
+  -r, --recursive         change takes place recursively to files only
+  -s, --subdirectories    change takes place recursively to directories only 
+If you specify both -r, -s both will take effect 
+
+Additional cases
+  *                        change takes place for all files and directories in the current directory
+  -v                       explain what is being done
+  -h, --help               display this help and exit
+
+If file or folder with the file name already exists it will pass by printing which file already exists.
+EOT
+exit 1
+}
+
+if test -z "$1";then
+    echo  "$name: missing option and file operand"
+    echo "Try '$name --help' for more information."
+    exit 1
+fi
+
+case=n
+rec=n
+sub=n
+verbose=n
+arr=()
+
+while test "x$1" != "x";do
+	case "$1" in
+        -l|--lowercase) case=l;;
+        -u|--uppercase) case=u;;
+        -r|--recursive)	rec=y;;
+        -s|--subdirectories) sub=y;;
+        -h|--help) help;;
+        -v) verbose=y;;
+        -*) error_msg "bad option $1"; exit 1 ;;
+        *)arr+=("${1}")
+    esac
+	shift
+done
+
+if ! ((${#arr[@]})); then
+    echo "$name: missing file operand"
+    echo "Try '$name --help' for more information."
+fi
+if test "$case" = "n";then
+    echo  "$name: missing option"
+    echo "Try '$name --help' for more information."
+fi
+
+IFS=""
+for item in ${arr[*]};do
+    if [[ -d $item ]];then
+        if test "$rec" = "y" || test "$sub" = "y";then
+            IFS=$'\n'
+            subdirectories=()
+            files=()
+
+            for x in $(find ./$item -name \*); do
+                if [[ -f $x ]];then
+                    files+=($(basename $x))
+                fi
+                if [[ -d $x ]];then
+                    subdirectories+=($(basename $x))
+                fi
+            done
+            files=( `for file in ${files[@]};do echo $file;done | sort -u` )
+            unset subdirectories[0]
+            subdirectories=( `for file in ${subdirectories[@]};do echo $file;done | sort -u` )
+            if test $case = "l";then
+                if test "$rec" = "y";then
+                    for file in ${files[*]};do
+                        IFS=$'\n'
+                        for x in $(find ./$item -name $file); do
+                            lowercase $x File 
+                        done
+                    done
+                fi
+                if test "$sub" = "y";then
+                    for dir in ${subdirectories[*]};do
+                        IFS=$'\n'
+                        for x in $(find ./$item -name $dir); do
+                            lowercase $x Directory 
+                        done
+                    done
+                    lowercase $item Directory 
+                fi
+            elif test $case = "u";then
+                if test "$rec" = "y";then
+                    for file in ${files[*]};do
+                        IFS=$'\n'
+                        for x in $(find ./$item -name $file); do
+                            uppercase $x File 
+                        done
+                    done
+                fi
+                if test "$sub" = "y";then
+                    for dir in ${subdirectories[*]};do
+                        IFS=$'\n'
+                        for x in $(find ./$item -name $dir); do
+                            uppercase $x Directory 
+                        done
+                    done
+                    uppercase $item Directory
+                fi
+            fi
+        elif test "$rec" != "y" && test "$sub" != "y";then
+            if test $case = "l";then
+                lowercase $item Directory
+            elif test $case = "u";then
+                uppercase $item Directory
+            fi
+        fi
+    elif [[ -f $item ]];then
+        if test $case = "l";then
+            lowercase $item File
+        elif test $case = "u";then
+            uppercase $item File
+        fi
+    else
+        echo "$name: File or directory '$item' does not exit"
+    fi
+done

@@ -131,10 +131,10 @@ void philosopher(int i)
 {
     while (1)
     {
-        printf("philosopher[%d] - this philosopher is thinking.\n", getpid());
+        printf("Philosopher[%d] - is thinking.\n", i + 1);
         sleep(10);
         take_forks(i);
-        printf("philosopher[%d] - this philosopher is eating.\n", getpid());
+        printf("Philosopher[%d] - is eating.\n", i + 1);
         sleep(10);
         put_forks(i);
     }

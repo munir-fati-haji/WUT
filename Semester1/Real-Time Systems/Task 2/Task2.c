@@ -32,7 +32,7 @@ union semun
     struct seminfo *__buf; /* Buffer for IPC_INFO (Linux-specific) */
 } semaphores;
 
-int Initialize_shared_memory()
+void Initialize_shared_memory()
 {
 
     shmid = shmget(IPC_PRIVATE, sizeof(*shared_memory), IPC_CREAT | 0666);
@@ -55,7 +55,7 @@ int Initialize_shared_memory()
     }
 }
 
-int initialize_semaphores()
+void initialize_semaphores()
 {
 
     sem_group = semget(IPC_PRIVATE, N + 1, IPC_CREAT | 0666);
